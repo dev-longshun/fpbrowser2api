@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>fpbrowser2api 使用指南 - 即梦 Seedance/SeedDream 反向代理</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.7; color: #1a1a2e; background: #f8f9fa; padding: 2rem; }
+.container { max-width: 900px; margin: 0 auto; }
+h1 { font-size: 1.8rem; margin-bottom: 0.5rem; color: #16213e; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e2e8f0; color: #0f3460; }
+h3 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; color: #16213e; }
+p { margin-bottom: 1rem; }
+code { background: #e2e8f0; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
+pre { background: #1a1a2e; color: #e2e8f0; padding: 1.2rem; border-radius: 8px; overflow-x: auto; margin: 1rem 0; font-size: 0.85rem; line-height: 1.5; }
+pre code { background: none; padding: 0; color: inherit; }
+.card { background: #fff; border-radius: 10px; padding: 1.5rem; margin: 1rem 0; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.warn { background: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem 1.2rem; border-radius: 0 6px 6px 0; margin: 1rem 0; }
+.info { background: #d1ecf1; border-left: 4px solid #17a2b8; padding: 1rem 1.2rem; border-radius: 0 6px 6px 0; margin: 1rem 0; }
+.success { background: #d4edda; border-left: 4px solid #28a745; padding: 1rem 1.2rem; border-radius: 0 6px 6px 0; margin: 1rem 0; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+th, td { padding: 0.6rem 0.8rem; border: 1px solid #dee2e6; text-align: left; }
+th { background: #e9ecef; font-weight: 600; }
+.step { counter-increment: step; position: relative; padding-left: 3rem; margin: 1.5rem 0; }
+.step::before { content: counter(step); position: absolute; left: 0; top: 0; width: 2rem; height: 2rem; background: #0f3460; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85rem; }
+.steps { counter-reset: step; }
+.subtitle { color: #666; font-size: 1rem; margin-bottom: 2rem; }
+.tag { display: inline-block; background: #0f3460; color: #fff; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; margin-right: 0.3rem; }
+.tag.green { background: #28a745; }
+.tag.orange { background: #fd7e14; }
+.tag.red { background: #dc3545; }
+.arch-diagram { background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 1.5rem; margin: 1rem 0; font-family: monospace; font-size: 0.8rem; white-space: pre; overflow-x: auto; line-height: 1.4; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>fpbrowser2api 使用指南</h1>
+<p class="subtitle">即梦 Seedance / SeedDream 反向代理 → NewAPI 兼容接口</p>
+
+<!-- ==================== 架构概览 ==================== -->
+<h2>一、架构概览</h2>
+
+<div class="arch-diagram">
+┌─────────────────────────────────────────────────────────────────────┐
+│  下游应用 (NewAPI / one-api / 你的业务)                               │
+│  调用: POST /v1/videos   GET /v1/videos/{id}   GET /v1/models       │
+└────────────────────────────────┬────────────────────────────────────┘
+                                 │ HTTP (Bearer API Key)
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  fpbrowser2api (FastAPI, port 8000)                                  │
+│  ┌──────────┐  ┌──────────────┐  ┌────────────────────────────┐    │
+│  │ 公开 API  │  │ 任务队列/调度 │  │ 窗口池管理 (预热/健康检查)   │    │
+│  └──────────┘  └──────┬───────┘  └────────────┬───────────────┘    │
+│                        │                       │                     │
+│                        ▼                       ▼                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │  Task Executors (dreamina_workflow / veo_workflow / sora...)  │    │
+│  │  → Playwright CDP → 在浏览器页面内执行 fetch()                 │    │
+│  └──────────────────────────────┬──────────────────────────────┘    │
+└─────────────────────────────────┼───────────────────────────────────┘
+                                  │ CDP (Chrome DevTools Protocol)
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  RoxyBrowser 指纹浏览器 (本地客户端, 提供 HTTP API)                    │
+│  ┌────────┐ ┌────────┐ ┌────────┐                                  │
+│  │ 窗口 1  │ │ 窗口 2  │ │ 窗口 N  │  ← 每个窗口独立指纹/代理/Cookie  │
+│  └────┬───┘ └────┬───┘ └────┬───┘                                  │
+└───────┼──────────┼──────────┼───────────────────────────────────────┘
+        │          │          │
+        ▼          ▼          ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  目标网站: dreamina.capcut.com (即梦/Seedance)                        │
+│            sora.com / flow.google.com / grok.x.ai ...               │
+└─────────────────────────────────────────────────────────────────────┘
+</div>
+
+<div class="info">
+<strong>核心原理：</strong>不是直接逆向 HTTP 接口，而是通过指纹浏览器开真实窗口，用 Playwright 连上去，在页面上下文里执行 <code>fetch()</code> 调用即梦的内部 API。对即梦来说，你就是一个正常登录的用户在浏览器里操作。
+</div>
+
+<!-- ==================== 关键概念 ==================== -->
+<h2>二、关键概念</h2>
+
+<div class="card">
+<table>
+<tr><th>概念</th><th>说明</th></tr>
+<tr><td><strong>Project (项目)</strong></td><td>顶层组织单位，一个项目对应一组浏览器服务器</td></tr>
+<tr><td><strong>Browser Server (浏览器服务器)</strong></td><td>一个 RoxyBrowser 实例的连接信息 (地址 + Token)</td></tr>
+<tr><td><strong>Space (空间)</strong></td><td>RoxyBrowser 里的 Workspace，包含多个窗口</td></tr>
+<tr><td><strong>Window (窗口)</strong></td><td>一个独立的浏览器实例，有自己的指纹、代理、Cookie</td></tr>
+<tr><td><strong>Task Type (任务类型)</strong></td><td>定义一种工作流，如 <code>dreamina_workflow</code>，绑定到具体窗口</td></tr>
+<tr><td><strong>Task (任务)</strong></td><td>一次具体的生成请求，排队 → 分配窗口 → 执行 → 完成</td></tr>
+<tr><td><strong>Window Binding (窗口绑定)</strong></td><td>将窗口分配给某个任务类型，含额度/并发配置</td></tr>
+</table>
+</div>
+
+<!-- ==================== 支持的模型 ==================== -->
+<h2>三、已支持的即梦模型</h2>
+
+<div class="card">
+<table>
+<tr><th>模型名 (API 调用时使用)</th><th>内部映射</th><th>说明</th></tr>
+<tr><td><code>seedance-2</code></td><td>dreamina_seedance_40</td><td><span class="tag green">已支持</span> Seedance 2.0 标准版</td></tr>
+<tr><td><code>seedance-2-fast</code></td><td>dreamina_seedance_20_fast</td><td><span class="tag green">已支持</span> Seedance 2.0 快速版</td></tr>
+<tr><td><code>seedance-2-pro</code></td><td>dreamina_seedance_40_pro</td><td><span class="tag green">已支持</span> Seedance 2.0 Pro</td></tr>
+</table>
+</div>
+
+<div class="info">
+<strong>功能支持：</strong>文生视频 (T2V)、图生视频 (I2V，首尾帧)、多参考图视频、时长 10/15 秒、分辨率 480p/720p/1080p、多种宽高比。
+</div>
+
+<!-- ==================== 前置条件 ==================== -->
+<h2>四、前置条件</h2>
+
+<div class="card">
+<ul style="list-style: none; padding: 0;">
+<li style="margin-bottom: 0.8rem;">✅ <strong>Python 3.10</strong> — 项目字节码严格要求 CPython 3.10.x</li>
+<li style="margin-bottom: 0.8rem;">✅ <strong>RoxyBrowser 指纹浏览器</strong> — 需要安装客户端并开启本地 API</li>
+<li style="margin-bottom: 0.8rem;">✅ <strong>即梦账号</strong> — 至少一个已登录 dreamina.capcut.com 的账号</li>
+<li style="margin-bottom: 0.8rem;">✅ <strong>代理 IP</strong> — 每个浏览器窗口建议配独立代理，避免风控</li>
+</ul>
+</div>
+
+<div class="warn">
+<strong>注意：</strong>RoxyBrowser 是商业软件，需要付费使用。每个即梦账号需要一个独立的浏览器窗口实例。
+</div>
+
+<!-- ==================== 完整部署流程 ==================== -->
+<h2>五、完整部署流程</h2>
+
+<div class="steps">
+
+<div class="step">
+<h3>安装并启动 fpbrowser2api</h3>
+<pre><code>cd fpbrowser2api
+./start.sh
+# 或手动:
+# python3.10 -m venv .venv && source .venv/bin/activate
+# pip install -r requirements.txt
+# python main.py</code></pre>
+<p>启动后访问 <code>http://localhost:8000</code>，用 admin/admin 登录管理后台。</p>
+</div>
+
+<div class="step">
+<h3>安装并配置 RoxyBrowser</h3>
+<p>下载安装 RoxyBrowser 客户端，然后：</p>
+<ul>
+<li>创建一个 Workspace（工作空间）</li>
+<li>在 Workspace 里创建浏览器窗口（每个即梦账号一个窗口）</li>
+<li>为每个窗口配置独立的代理 IP</li>
+<li>开启 RoxyBrowser 的<strong>本地 API 服务</strong>，记下 API 地址和 Token</li>
+</ul>
+</div>
+
+<div class="step">
+<h3>在浏览器窗口中登录即梦</h3>
+<p>打开每个 RoxyBrowser 窗口，手动访问 <code>https://dreamina.capcut.com</code> 并登录你的即梦账号。登录后保持窗口不要关闭（Cookie 会保存在窗口里）。</p>
+</div>
+
+<div class="step">
+<h3>管理后台 → 创建项目结构</h3>
+<p>在 fpbrowser2api 管理后台 (<code>/admin/projects</code>) 中：</p>
+<ol style="margin-left: 1.5rem;">
+<li><strong>新建项目</strong> — 起个名字即可</li>
+<li><strong>添加浏览器服务器</strong> — 填写：
+<pre><code>厂商 (vendor): roxy
+局域网地址 (lan_addr): http://127.0.0.1:端口  (RoxyBrowser API 地址)
+访问密钥 (access_key): 你的 RoxyBrowser API Token</code></pre>
+</li>
+<li><strong>添加空间 (Space)</strong> — 填入 RoxyBrowser 的 Workspace ID</li>
+<li><strong>同步窗口</strong> — 点击同步按钮，自动拉取 RoxyBrowser 中的窗口列表</li>
+</ol>
+</div>
+
+<div class="step">
+<h3>管理后台 → 创建任务类型并绑定窗口</h3>
+<p>在 <code>/admin/task-types</code> 中：</p>
+<ol style="margin-left: 1.5rem;">
+<li><strong>新建任务类型</strong>：
+<pre><code>名称: Dreamina Seedance
+代码 (code): dreamina_workflow
+处理器 (handler): dreamina_workflow
+刷新额度处理器: dreamina_credits</code></pre>
+</li>
+<li><strong>绑定窗口</strong> — 将第 4 步同步过来的窗口绑定到这个任务类型</li>
+<li><strong>更新 access_token</strong> — 对每个绑定的窗口，点击"更新"读取浏览器中的 sessionid</li>
+</ol>
+</div>
+
+<div class="step">
+<h3>测试调用</h3>
+<p>可以在管理后台的 <code>/admin/test</code> 页面手动提交测试任务，或直接调 API：</p>
+<pre><code># 创建视频生成任务
+curl -X POST http://localhost:8000/v1/videos \
+  -H "Authorization: Bearer mirrmart_sora2_880315" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "seedance-2",
+    "prompt": "一只金毛犬在向日葵花田里奔跑",
+    "duration": 10,
+    "aspect_ratio": "16:9",
+    "resolution": "720p"
+  }'
+
+# 返回 task_id，用它查询状态
+curl http://localhost:8000/v1/videos/YOUR_TASK_ID \
+  -H "Authorization: Bearer mirrmart_sora2_880315"</code></pre>
+</div>
+
+<div class="step">
+<h3>接入 NewAPI 进行二次转发</h3>
+<p>在 NewAPI 中添加渠道：</p>
+<ul>
+<li><strong>类型</strong>：自定义渠道 / OpenAI 兼容</li>
+<li><strong>Base URL</strong>：<code>http://你的服务器IP:8000</code></li>
+<li><strong>API Key</strong>：<code>mirrmart_sora2_880315</code>（或你在 setting.toml 里改的值）</li>
+<li><strong>模型</strong>：<code>seedance-2</code>, <code>seedance-2-fast</code>, <code>seedance-2-pro</code></li>
+</ul>
+<div class="info">
+项目已内置 <code>/v1/chat/completions</code> 健康检查端点（仅返回测试消息），NewAPI 的渠道测试可以通过。实际生成走 <code>/v1/videos</code> 接口。
+</div>
+</div>
+
+</div>
+
+<!-- ==================== API 接口文档 ==================== -->
+<h2>六、API 接口参考</h2>
+
+<div class="card">
+<h3>POST /v1/videos — 创建生成任务</h3>
+<pre><code>{
+  "model": "seedance-2",          // 必填: seedance-2 | seedance-2-fast | seedance-2-pro
+  "prompt": "你的提示词",          // 必填: 生成描述
+  "duration": 10,                 // 可选: 10 或 15 秒 (默认 10)
+  "aspect_ratio": "16:9",        // 可选: 16:9, 9:16, 1:1, 4:3, 3:4 等
+  "resolution": "720p",          // 可选: 480p, 720p, 1080p
+  "image_url": "https://...",    // 可选: 图生视频的参考图 URL
+  "image_urls": ["url1","url2"]  // 可选: 多参考图模式 (最多 9 张)
+}</code></pre>
+
+<h3>响应格式</h3>
+<pre><code>{
+  "id": "task_abc123",
+  "task_id": "task_abc123",
+  "object": "video",
+  "created_at": 1714200000000,
+  "status": "queued",            // queued → in_progress → completed | failed
+  "progress": 0,
+  "model": "seedance-2"
+}</code></pre>
+
+<h3>GET /v1/videos/{task_id} — 查询任务状态</h3>
+<pre><code>{
+  "id": "task_abc123",
+  "status": "completed",
+  "progress": 100,
+  "video_url": "https://...",    // 生成的视频 URL
+  "image_url": "https://...",    // 如果是图片任务
+  "url": "https://...",          // 通用结果 URL
+  "metadata": {
+    "result_urls": ["https://..."]
+  }
+}</code></pre>
+
+<h3>GET /v1/models — 列出可用模型</h3>
+<p>返回 OpenAI 兼容格式的模型列表，可被 NewAPI 自动识别。</p>
+</div>
+
+<!-- ==================== 管理后台功能 ==================== -->
+<h2>七、管理后台功能一览</h2>
+
+<div class="card">
+<table>
+<tr><th>页面</th><th>路径</th><th>功能</th></tr>
+<tr><td>系统配置</td><td>/admin/system</td><td>代理、调试、并发限制、API Key、密码修改</td></tr>
+<tr><td>项目管理</td><td>/admin/projects</td><td>项目 → 浏览器服务器 → 空间 → 窗口 (层级管理)</td></tr>
+<tr><td>任务类型</td><td>/admin/task-types</td><td>创建/编辑任务类型、绑定窗口、配置额度</td></tr>
+<tr><td>任务列表</td><td>/admin/tasks</td><td>实时任务监控、队列状态、按窗口查看</td></tr>
+<tr><td>测试</td><td>/admin/test</td><td>手动提交测试任务 (含所有参数)</td></tr>
+<tr><td>用户管理</td><td>/admin/users</td><td>多用户、角色权限</td></tr>
+<tr><td>日志</td><td>/admin/logs</td><td>请求日志查看</td></tr>
+</table>
+</div>
+
+<!-- ==================== 常见问题 ==================== -->
+<h2>八、注意事项 & 常见问题</h2>
+
+<div class="warn">
+<strong>Python 版本：</strong>必须是 CPython 3.10.x。项目核心代码以 .pyc 字节码分发，其他版本无法运行。
+</div>
+
+<div class="card">
+<h3>Q: 为什么需要 RoxyBrowser？能用其他指纹浏览器吗？</h3>
+<p>项目通过 RoxyBrowser 的 HTTP API 来管理浏览器窗口的开启/关闭和获取 CDP 连接地址。代码中 vendor 字段目前只支持 <code>roxy</code>。理论上可以适配其他指纹浏览器，但需要修改 <code>fp_browser_client</code> 模块。</p>
+
+<h3>Q: sessionid 会过期吗？</h3>
+<p>会。即梦的 Cookie 有有效期，过期后需要重新在浏览器窗口里登录。管理后台可以手动刷新 access_token。</p>
+
+<h3>Q: 一个窗口能同时处理多少任务？</h3>
+<p>每个窗口同一时间只处理一个任务（有 create lock 串行化）。并发能力取决于你绑定了多少个窗口。</p>
+
+<h3>Q: Cloudflare 拦截怎么办？</h3>
+<p>项目内置了 Cloudflare/Turnstile 检测和自动处理（等待、点击、窗口重启）。如果频繁触发，建议更换代理 IP 或降低请求频率。</p>
+
+<h3>Q: 和 iptag/jimeng-api 的区别？</h3>
+<p>jimeng-api 是纯 HTTP 逆向，轻量但脆弱；fpbrowser2api 是真实浏览器驱动，重但抗风控能力强。fpbrowser2api 还支持多平台（Sora、VEO、Grok），是通用框架。</p>
+</div>
+
+<!-- ==================== 配置文件 ==================== -->
+<h2>九、配置文件参考</h2>
+
+<div class="card">
+<h3>config/setting.toml</h3>
+<pre><code>[server]
+host = "0.0.0.0"
+port = 8000                    # 服务端口
+
+[global]
+admin_username = "admin"       # 管理后台用户名
+admin_password = "admin"       # 管理后台密码
+api_key = "your-api-key"       # 公开 API 的 Bearer Token
+
+[system]
+proxy_enabled = false          # 是否启用出站代理
+proxy_url = ""                 # 出站代理地址
+debug_enabled = false          # 调试模式
+log_to_file = false            # 日志写文件
+
+[oss]
+enabled = false                # 启用阿里云 OSS (2K 图片上传)
+endpoint = ""
+region = ""
+bucket = ""
+public_base_url = ""
+OSS_ACCESS_KEY_ID = ""
+OSS_ACCESS_KEY_SECRET = ""</code></pre>
+</div>
+
+<div class="success">
+<strong>总结：</strong>部署的核心路径是 → 装 RoxyBrowser → 开窗口登录即梦 → fpbrowser2api 后台配置项目/服务器/空间/窗口 → 创建 dreamina_workflow 任务类型并绑定窗口 → 通过 /v1/videos API 调用。接入 NewAPI 时用 Base URL + API Key 即可。
+</div>
+
+</div>
+</body>
+</html>

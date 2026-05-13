@@ -1,18 +1,96 @@
-/* 管理后台顶栏：任意宽度下保持横向一行，窄屏可横向滚动 */
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap");
+
+/* ============================================================
+   NEO-BRUTALISM DESIGN SYSTEM — fpbrowser2api
+   Overrides Bootstrap 5 visuals while preserving grid/layout.
+   ============================================================ */
+
+:root {
+  --cream: #fffef5;
+  --ink: #1a1423;
+  --orange: #ff6b35;
+  --blue: #004e98;
+  --green: #2d9b4e;
+  --yellow: #ffd23f;
+  --red: #e63946;
+
+  --bg: var(--cream);
+  --text: var(--ink);
+  --border: 2.5px solid var(--ink);
+  --shadow: 4px 4px 0 var(--ink);
+  --shadow-sm: 2px 2px 0 var(--ink);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  --font-display: "Sora", "Noto Sans SC", system-ui, sans-serif;
+  --font-body: "Sora", "Noto Sans SC", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --radius: 2px;
+  --radius-lg: 4px;
+}
+
+/* ============================================================
+   BASE OVERRIDES
+   ============================================================ */
+
+body {
+  background: var(--bg) !important;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.mono, .font-monospace {
+  font-family: var(--font-mono) !important;
+}
+
+/* ============================================================
+   NAVBAR
+   ============================================================ */
+
+.admin-top-nav {
+  background: var(--ink) !important;
+  border-bottom: 2.5px solid var(--ink);
+  padding: var(--space-2) var(--space-4);
+}
+
 .admin-top-nav > .container-fluid {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   overflow-x: auto;
   overflow-y: hidden;
-  gap: 0.25rem;
+  gap: var(--space-1);
   -webkit-overflow-scrolling: touch;
 }
 
 .admin-top-nav .navbar-brand {
   flex-shrink: 0;
   white-space: nowrap;
-  margin-right: 0.5rem;
+  margin-right: var(--space-4);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+  color: var(--cream) !important;
 }
 
 .admin-top-nav .navbar-nav {
@@ -24,15 +102,487 @@
 
 .admin-top-nav .navbar-nav .nav-link {
   white-space: nowrap;
-  padding-left: 0.45rem;
-  padding-right: 0.45rem;
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgba(255, 254, 245, 0.7) !important;
+  border-radius: var(--radius);
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.admin-top-nav .navbar-nav .nav-link:hover {
+  color: var(--cream) !important;
+  background: rgba(255, 254, 245, 0.08);
+}
+
+.admin-top-nav .navbar-nav .nav-link.active {
+  color: var(--orange) !important;
+  font-weight: 700;
 }
 
 .admin-top-nav .navbar-text {
   flex-shrink: 0;
   white-space: nowrap;
+  font-size: 0.75rem;
+  color: rgba(255, 254, 245, 0.6) !important;
 }
 
 .admin-top-nav .btn {
   flex-shrink: 0;
 }
+
+.admin-top-nav .btn-outline-info,
+.admin-top-nav .btn-outline-light {
+  border: 2px solid rgba(255, 254, 245, 0.3);
+  color: var(--cream) !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius);
+  transition: all 0.12s ease;
+}
+
+.admin-top-nav .btn-outline-info:hover,
+.admin-top-nav .btn-outline-light:hover {
+  background: var(--orange);
+  border-color: var(--orange);
+  color: var(--cream) !important;
+}
+
+/* ============================================================
+   CARDS — Bootstrap .card override
+   ============================================================ */
+
+.card {
+  background: var(--bg);
+  border: var(--border) !important;
+  box-shadow: var(--shadow);
+  border-radius: var(--radius) !important;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.card:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+.card-body {
+  padding: var(--space-6);
+}
+
+.card-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: var(--space-4);
+}
+
+/* ============================================================
+   BUTTONS — Bootstrap .btn override
+   ============================================================ */
+
+.btn {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+  border: var(--border);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius) !important;
+  padding: var(--space-2) var(--space-6);
+  transition: all 0.12s ease;
+}
+
+.btn:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: none !important;
+}
+
+.btn-primary {
+  background: var(--orange) !important;
+  border-color: var(--ink) !important;
+  color: var(--cream) !important;
+}
+
+.btn-primary:hover {
+  background: #ff5722 !important;
+}
+
+.btn-outline-primary {
+  background: var(--bg);
+  border-color: var(--ink) !important;
+  color: var(--orange) !important;
+}
+
+.btn-outline-primary:hover {
+  background: var(--orange) !important;
+  color: var(--cream) !important;
+}
+
+.btn-outline-danger {
+  background: var(--bg);
+  border-color: var(--ink) !important;
+  color: var(--red) !important;
+}
+
+.btn-outline-danger:hover {
+  background: var(--red) !important;
+  color: var(--cream) !important;
+}
+
+.btn-warning {
+  background: var(--yellow) !important;
+  border-color: var(--ink) !important;
+  color: var(--ink) !important;
+}
+
+.btn-warning:hover {
+  background: #ffca1c !important;
+}
+
+.btn-success {
+  background: var(--green) !important;
+  border-color: var(--ink) !important;
+  color: var(--cream) !important;
+}
+
+.btn-danger {
+  background: var(--red) !important;
+  border-color: var(--ink) !important;
+  color: var(--cream) !important;
+}
+
+.btn-info {
+  background: var(--blue) !important;
+  border-color: var(--ink) !important;
+  color: var(--cream) !important;
+}
+
+.btn-sm {
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.75rem;
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+/* ============================================================
+   FORMS — Bootstrap .form-control override
+   ============================================================ */
+
+.form-control {
+  background: var(--bg) !important;
+  border: var(--border) !important;
+  border-radius: var(--radius) !important;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  padding: var(--space-2) var(--space-3);
+  color: var(--text) !important;
+  transition: border-color 0.12s ease;
+}
+
+.form-control:focus {
+  border-color: var(--orange) !important;
+  box-shadow: none !important;
+  outline: none;
+}
+
+.form-control[readonly] {
+  background: rgba(26, 20, 35, 0.04) !important;
+}
+
+.form-label {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: var(--space-2);
+}
+
+.form-text {
+  font-size: 0.75rem;
+  color: rgba(26, 20, 35, 0.6);
+  margin-top: var(--space-1);
+}
+
+.form-check-input {
+  border: 2px solid var(--ink) !important;
+  border-radius: var(--radius) !important;
+}
+
+.form-check-input:checked {
+  background-color: var(--orange) !important;
+  border-color: var(--ink) !important;
+}
+
+.form-check-input:focus {
+  box-shadow: none !important;
+}
+
+.form-check-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.form-switch .form-check-input {
+  border-radius: 12px !important;
+}
+
+/* ============================================================
+   ALERTS
+   ============================================================ */
+
+.alert {
+  border: var(--border) !important;
+  border-radius: var(--radius) !important;
+  font-size: 0.8125rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.alert-info {
+  background: rgba(0, 78, 152, 0.08) !important;
+  color: var(--ink) !important;
+}
+
+.alert-warning {
+  background: rgba(255, 210, 63, 0.15) !important;
+  color: var(--ink) !important;
+}
+
+.alert-danger {
+  background: rgba(230, 57, 70, 0.08) !important;
+  color: var(--ink) !important;
+}
+
+/* ============================================================
+   TABLES
+   ============================================================ */
+
+.table {
+  font-size: 0.8125rem;
+}
+
+.table > thead > tr > th {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 2px solid var(--ink) !important;
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.table > tbody > tr > td {
+  padding: var(--space-3);
+  border-bottom: 1px solid rgba(26, 20, 35, 0.12) !important;
+  vertical-align: middle;
+}
+
+.table > tbody > tr:hover > td {
+  background: rgba(255, 107, 53, 0.05);
+}
+
+/* ============================================================
+   BADGES
+   ============================================================ */
+
+.badge {
+  font-family: var(--font-display);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius) !important;
+  padding: 2px var(--space-2);
+}
+
+.bg-success { background: var(--green) !important; }
+.bg-danger { background: var(--red) !important; }
+.bg-warning { background: var(--yellow) !important; color: var(--ink) !important; }
+.bg-info { background: var(--blue) !important; }
+.bg-primary { background: var(--orange) !important; }
+.bg-secondary { background: rgba(26, 20, 35, 0.6) !important; }
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+
+.toast {
+  border: var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow);
+  background: var(--bg) !important;
+}
+
+/* ============================================================
+   NEO-BRUTALISM COMPONENT CLASSES
+   ============================================================ */
+
+.nb-card {
+  background: var(--bg);
+  border: var(--border);
+  box-shadow: var(--shadow);
+  padding: var(--space-6);
+  border-radius: var(--radius);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.nb-card:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+.nb-card-sm {
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
+}
+
+.nb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: var(--border);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  text-decoration: none;
+  user-select: none;
+}
+
+.nb-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+.nb-btn-primary { background: var(--orange); color: var(--cream); }
+.nb-btn-primary:hover { background: #ff5722; }
+.nb-btn-secondary { background: var(--bg); color: var(--ink); }
+.nb-btn-secondary:hover { background: var(--yellow); }
+.nb-btn-danger { background: var(--red); color: var(--cream); }
+.nb-btn-success { background: var(--green); color: var(--cream); }
+.nb-btn-blue { background: var(--blue); color: var(--cream); }
+
+.nb-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  background: var(--bg);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.12s ease;
+}
+
+.nb-input:focus { border-color: var(--orange); }
+
+.nb-label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: var(--space-2);
+}
+
+.nb-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-3);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+}
+
+.nb-badge-active { background: var(--green); color: var(--cream); }
+.nb-badge-depleted { background: var(--yellow); color: var(--ink); }
+.nb-badge-dead { background: var(--red); color: var(--cream); }
+.nb-badge-registering { background: var(--blue); color: var(--cream); }
+
+.nb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.nb-table th {
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 2px solid var(--ink);
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.nb-table td {
+  padding: var(--space-3);
+  border-bottom: 1px solid rgba(26, 20, 35, 0.15);
+  vertical-align: middle;
+}
+
+.nb-table tr:hover td {
+  background: rgba(255, 107, 53, 0.05);
+}
+
+.nb-divider {
+  height: 2px;
+  background: var(--ink);
+  margin: var(--space-6) 0;
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-delay-1 { animation-delay: 0.1s; }
+.animate-delay-2 { animation-delay: 0.2s; }
+.animate-delay-3 { animation-delay: 0.3s; }
+.animate-delay-4 { animation-delay: 0.4s; }
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--cream); }
+::-webkit-scrollbar-thumb { background: var(--ink); border-radius: 3px; }
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+
+.text-muted { color: rgba(26, 20, 35, 0.55) !important; }
+
+.shadow-sm { box-shadow: var(--shadow-sm) !important; }
+
+.border-warning { border-color: var(--yellow) !important; }
