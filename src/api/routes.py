@@ -115,6 +115,10 @@ def _normalize_video_task_payload(payload: Dict[str, Any]) -> tuple[str, Dict[st
         payload["n_frames"] = 240
     else:
         task_type_code = model
+
+    if "image" in payload and "image_url" not in payload:
+        payload["image_url"] = payload.pop("image")
+
     return task_type_code, payload
 
 
