@@ -13,6 +13,7 @@ sys.dont_write_bytecode = True
 _US_TO_SG = {
     "https://dreamina-api.us.capcut.com": "https://mweb-api-sg.capcut.com",
     "https://commerce.us.capcut.com": "https://commerce-api-sg.capcut.com",
+    "https://imagex16-normal-us-ttp.capcutapi.us": "https://imagex-normal-sg.capcutapi.com",
 }
 
 
@@ -41,7 +42,7 @@ def _patch_dreamina_region():
         return
     print(f"[region-patch] Found module as '{mod_key}' on attempt {_patch_attempts}")
     patched = []
-    for attr in ("_DREAMINA_API_BASE",):
+    for attr in ("_DREAMINA_API_BASE", "_DREAMINA_IMAGEX_BASE"):
         old = getattr(mod, attr, None)
         if old and old in _US_TO_SG:
             setattr(mod, attr, _US_TO_SG[old])
