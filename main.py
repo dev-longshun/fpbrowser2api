@@ -7,6 +7,9 @@ import threading
 
 REQUIRED = (3, 10)
 
+# Keep local route wrappers from regenerating tracked release bytecode files.
+sys.dont_write_bytecode = True
+
 _US_TO_SG = {
     "https://dreamina-api.us.capcut.com": "https://mweb-api-sg.capcut.com",
     "https://commerce.us.capcut.com": "https://commerce-api-sg.capcut.com",

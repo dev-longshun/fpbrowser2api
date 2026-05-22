@@ -43,11 +43,13 @@ for r in conn.execute('SELECT id, consecutive_errors, remaining_quota, inflight_
 
 ## Playwright CDP 超时
 
-**原因**: Roxy Browser 的 dashboard 标签页导致 Playwright 的 `Target.setAutoAttach` 初始化挂起。
+**原因**: Roxy Browser 的 dashboard 标签页（`dashboard.html`）导致 Playwright 的 `Target.setAutoAttach` 初始化挂起。这是最常见的任务失败原因。
 
-**修复**: 通过 CDP 关闭 dashboard 标签页（见 operations.md 第 7 步）。
+**修复**: 通过 CDP 关闭 dashboard 标签页（见 operations.md 第 4.1 步和第 7 步）。
 
-**预防**: 打开 Roxy 窗口后避免在 dashboard 中点击窗口链接。
+**预防**: 每次通过 API 打开 Roxy 窗口后，必须立即检查并关闭 dashboard 标签页。用户不操作 Roxy Browser，所有窗口管理由 Claude 执行，因此这一步由 Claude 在打开窗口后自动完成。
+
+**也可能表现为**: `server restarted` / `task_failed` 错误 — 当 CDP 超时后任务被标记为失败，错误信息可能不直接提到 dashboard。
 
 ## "socksio package is not installed"
 

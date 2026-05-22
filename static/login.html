@@ -144,8 +144,9 @@
           }
           setAdminToken(d.token);
           const me = await getAdminProfile(true);
-          const order = ["system", "projects", "task_types", "tasks", "test", "card_keys", "logs", "users"];
+          const order = ["workflow", "system", "projects", "task_types", "tasks", "test", "card_keys", "logs", "users"];
           const pathMap = {
+            workflow: "/admin/workflow",
             system: "/admin/system",
             projects: "/admin/projects",
             task_types: "/admin/task-types",
@@ -155,7 +156,7 @@
             logs: "/admin/logs",
             users: "/admin/users",
           };
-          let target = "/admin/system";
+          let target = "/admin/workflow";
           for (const key of order) {
             if (isPageAllowed(me, key)) {
               target = pathMap[key];

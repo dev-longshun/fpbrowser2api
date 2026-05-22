@@ -23,6 +23,7 @@
       <div class="container-fluid">
         <a class="navbar-brand" href="/admin/system">Mirr矩阵</a>
         <div class="navbar-nav me-auto">
+          <a class="nav-link" data-nav="workflow" href="/admin/workflow">工作台</a>
           <a class="nav-link" data-nav="system" href="/admin/system">系统配置</a>
           <a class="nav-link" data-nav="projects" href="/admin/projects">项目管理</a>
           <a class="nav-link" data-nav="task_types" href="/admin/task-types">任务类型管理</a>
@@ -35,10 +36,6 @@
           <a class="nav-link" data-nav="logs" href="/admin/logs">请求日志</a>
           <a class="nav-link" data-nav="users" href="/admin/users">用户管理</a>
         </div>
-        <a class="btn btn-outline-info btn-sm me-3" href="https://github.com/lakysir/fpbrowser2api" target="_blank" rel="noopener noreferrer">源码部署</a>
-        <span class="navbar-text text-light small me-3">Telegram：<span class="font-monospace">@newtoken_me</span></span>
-        <a class="btn btn-outline-info btn-sm me-3" href="https://www.newtoken.club/" target="_blank" rel="noopener noreferrer">[官方中转站]</a>
-        <span class="navbar-text text-light small font-monospace me-3" data-role="navbarClock" title="当前时间"></span>
         <button class="btn btn-outline-light btn-sm" id="btnLogout">退出</button>
       </div>
     </nav>
@@ -123,6 +120,7 @@
                   <th style="min-width: 150px;">IP</th>
                   <th style="min-width: 120px;">任务类型</th>
                   <th style="min-width: 72px;">媒体</th>
+                  <th style="min-width: 56px;">时长</th>
                   <th style="min-width: 80px;">task_id</th>
                   <th style="min-width: 100px;">状态</th>
                   <th style="min-width: 100px;">进度</th>
@@ -786,7 +784,7 @@
         document.getElementById("btnNextBottom").disabled = (offset + limit) >= total;
 
         if (!state.items.length) {
-          body.innerHTML = `<tr><td colspan="13" class="text-muted small">暂无任务</td></tr>`;
+          body.innerHTML = `<tr><td colspan="14" class="text-muted small">暂无任务</td></tr>`;
           return;
         }
 
@@ -795,6 +793,13 @@
           const typeName = state.typeMap.get(String(code)) || String(code);
           const nFramesResolved = resolveNFramesFromPromptItem(x);
           const mediaLabel = mediaKindLabel(x);
+          let durationLabel = "-";
+          if (x.status === "completed") {
+            try {
+              const rj = typeof x.result_json === "string" ? JSON.parse(x.result_json) : x.result_json;
+              if (rj && rj.duration) durationLabel = `${rj.duration}s`;
+            } catch (_) {}
+          }
           const err = x.error_message || "";
           const pNum = Number(x?.progress);
           const progress = Number.isFinite(pNum) ? Math.max(0, Math.min(100, Math.trunc(pNum))) : null;
@@ -828,6 +833,7 @@
               <td class="mono truncate-1" title="${escapeHtml(windowIp)}">${escapeHtml(windowIp)}</td>
               <td>${escapeHtml(typeName)} <span class="text-muted mono">(${escapeHtml(code)})</span></td>
               <td class="text-nowrap" title="n_frames=${escapeHtml(String(nFramesResolved))}">${escapeHtml(mediaLabel)}</td>
+              <td class="mono text-center">${escapeHtml(durationLabel)}</td>
               <td class="mono" style="max-width: 120px;">${escapeHtml(x.task_id || "")}</td>
               <td>${badgeForStatus(x.status)}${isCharacterCreation(x) ? ' <span class="badge text-bg-info">角色创建</span>' : ''}</td>
               <td>
@@ -1024,4 +1030,3 @@
     </script>
   </body>
 </html>
-

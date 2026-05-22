@@ -54,9 +54,12 @@ TOKEN=$(curl -s -X POST http://{host}:8000/api/admin/login \
 核心操作：
 1. **启动服务** — 激活 venv，unset all_proxy，启动 main.py，验证 region-patch
 2. **添加账号** — 用户登录 Roxy 窗口后，同步窗口、绑定任务类型、刷新额度
-3. **重置窗口** — 清除 consecutive_errors、error_cooldown_until、inflight_slots
-4. **刷新额度** — POST refresh-remaining-quota 验证账号可用
-5. **排查故障** — 检查 server.log、窗口映射状态、CDP 连接
+3. **打开窗口** — 通过 Roxy API 打开后，**必须立即关闭 dashboard 标签页**（否则 CDP 超时导致所有任务失败）
+4. **重置窗口** — 清除 consecutive_errors、error_cooldown_until、inflight_slots
+5. **刷新额度** — POST refresh-remaining-quota 验证账号可用
+6. **排查故障** — 检查 server.log、窗口映射状态、CDP 连接
+
+> **关键规则：用户不操作 Roxy Browser，所有窗口管理由 Claude 执行。每次打开窗口后必须检查并关闭 dashboard 标签页。**
 
 ### 常见故障排查
 

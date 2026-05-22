@@ -45,6 +45,41 @@ TOKEN=$(curl -s -X POST http://{host}:8000/api/admin/login \
      -H "Authorization: Bearer $TOKEN"
    ```
 
+## 4.1 打开窗口后必须关闭 Dashboard 标签页
+
+**每次通过 API 打开 Roxy 窗口后，必须立即执行此步骤。** Dashboard 标签页会导致 Playwright CDP 连接超时，任务直接失败。
+
+```bash
+# 打开窗口（返回 debug port）
+OPEN_RESULT=$(curl -s -X POST 'http://127.0.0.1:50000/browser/open' \
+  -H 'Content-Type: application/json' \
+  -d '{"workspaceId":"{workspace_id}","dirId":"{dir_id}"}')
+DEBUG_PORT=$(echo $OPEN_RESULT | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['http'].split(':')[1])")
+
+# 立即关闭 dashboard 标签页
+DASHBOARD_ID=$(curl -s http://127.0.0.1:$DEBUG_PORT/json/list | python3 -c "
+import json, sys
+for t in json.load(sys.stdin):
+    if 'dashboard' in t.get('url','').lower():
+        print(t['id']); break
+")
+if [ -n "$DASHBOARD_ID" ]; then
+    curl -s http://127.0.0.1:$DEBUG_PORT/json/close/$DASHBOARD_ID
+    echo "Dashboard tab closed"
+fi
+
+# 验证：只剩 Dreamina 页面
+curl -s http://127.0.0.1:$DEBUG_PORT/json/list | python3 -c "
+import json, sys
+tabs = [t for t in json.load(sys.stdin) if t.get('type') == 'page']
+print(f'Remaining page tabs: {len(tabs)}')
+for t in tabs:
+    print(f'  {t.get(\"url\",\"\")[:80]}')
+"
+```
+
+**规则：窗口里只保留 Dreamina 页面，其他一律关闭。用户不会手动操作 Roxy Browser，所有窗口管理由 Claude 执行。**
+
 ## 5. 重置窗口映射（任务失败后）
 
 ```bash

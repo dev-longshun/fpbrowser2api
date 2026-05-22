@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>工作台 - Mirr矩阵</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+    <link href="/assets/admin-nav.css" rel="stylesheet" />
+    <style>
+      body { min-height: 100dvh; }
+      .workflow-page {
+        max-width: 1760px;
+        margin: 0 auto;
+        padding: 20px clamp(12px, 2vw, 28px) 36px;
+      }
+      .worktop {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      .worktop-title {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+      .worktop-title h1 {
+        margin: 0;
+        font-size: 1.35rem;
+        line-height: 1.2;
+      }
+      .worktop-subtitle {
+        color: rgba(26, 20, 35, 0.68);
+        font-size: 0.875rem;
+        max-width: 72ch;
+      }
+      .worktop-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .task-type-select {
+        width: min(420px, 78vw);
+      }
+      .module-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+      }
+      .module-shell {
+        background: var(--bg);
+        border: var(--border);
+        box-shadow: var(--shadow-sm);
+        border-radius: var(--radius-lg);
+      }
+      .module-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px 0;
+      }
+      .module-title {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 800;
+      }
+      .module-body {
+        padding: 14px 16px 16px;
+      }
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 10px;
+      }
+      .stat-cell {
+        min-height: 86px;
+        border: 2px solid rgba(26, 20, 35, 0.78);
+        border-radius: var(--radius-lg);
+        padding: 12px;
+        background: rgba(255, 254, 245, 0.68);
+      }
+      .stat-label {
+        font-size: 0.75rem;
+        color: rgba(26, 20, 35, 0.68);
+        margin-bottom: 8px;
+      }
+      .stat-value {
+        font-size: 1.35rem;
+        font-weight: 800;
+        line-height: 1.1;
+      }
+      .stat-value.stat-text {
+        font-size: 1.05rem;
+        line-height: 1.25;
+      }
+      .stat-meta {
+        color: rgba(26, 20, 35, 0.62);
+        font-size: 0.75rem;
+        margin-top: 6px;
+      }
+      .flow-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 10px;
+      }
+      .flow-step {
+        min-height: 96px;
+        border: 2px solid rgba(26, 20, 35, 0.7);
+        border-radius: var(--radius-lg);
+        padding: 12px;
+        background: rgba(255, 254, 245, 0.72);
+      }
+      .flow-name {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 800;
+        margin-bottom: 8px;
+      }
+      .flow-detail {
+        color: rgba(26, 20, 35, 0.68);
+        font-size: 0.82rem;
+        line-height: 1.45;
+      }
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border: 2px solid var(--ink);
+        border-radius: 50%;
+        flex: 0 0 auto;
+      }
+      .status-ok { background: var(--green); }
+      .status-warn { background: var(--yellow); }
+      .status-bad { background: var(--red); }
+      .status-muted { background: rgba(26, 20, 35, 0.18); }
+      .pool-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .pool-table-wrap {
+        overflow: auto;
+        border: 2px solid rgba(26, 20, 35, 0.74);
+        border-radius: var(--radius-lg);
+      }
+      .pool-table {
+        margin: 0;
+        min-width: 1080px;
+      }
+      .pool-table th,
+      .pool-table td {
+        vertical-align: middle;
+        white-space: nowrap;
+      }
+      .pool-table td.wrap-cell {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        max-width: 260px;
+      }
+      .pool-table th.col-account,
+      .pool-table td.col-account {
+        min-width: 180px;
+      }
+      .pool-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        min-width: 168px;
+      }
+      .pool-actions .btn {
+        white-space: nowrap;
+      }
+      .account-name {
+        font-size: 0.95rem;
+        font-weight: 800;
+        overflow-wrap: normal;
+        white-space: nowrap;
+      }
+      .account-meta {
+        color: rgba(26, 20, 35, 0.62);
+        font-size: 0.76rem;
+        margin-top: 2px;
+      }
+      .tag-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 7px;
+        border: 1.5px solid rgba(26, 20, 35, 0.72);
+        border-radius: var(--radius);
+        font-size: 0.74rem;
+        font-weight: 700;
+        background: rgba(255, 210, 63, 0.2);
+      }
+      .health-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 58px;
+        padding: 2px 8px;
+        border: 2px solid var(--ink);
+        border-radius: var(--radius);
+        font-size: 0.75rem;
+        font-weight: 800;
+      }
+      .health-ok { background: rgba(45, 155, 78, 0.18); }
+      .health-info { background: rgba(0, 78, 152, 0.16); }
+      .health-warn { background: rgba(255, 210, 63, 0.42); }
+      .health-bad { background: rgba(230, 57, 70, 0.18); }
+      .health-muted { background: rgba(26, 20, 35, 0.10); }
+      .browser-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 10px;
+      }
+      .browser-item {
+        border: 2px solid rgba(26, 20, 35, 0.72);
+        border-radius: var(--radius-lg);
+        padding: 12px;
+        min-width: 0;
+      }
+      .browser-item-title {
+        font-weight: 800;
+        margin-bottom: 6px;
+      }
+      .detail-line {
+        color: rgba(26, 20, 35, 0.68);
+        font-size: 0.8rem;
+        overflow-wrap: anywhere;
+      }
+      .settings-panel {
+        display: none;
+        margin-bottom: 16px;
+      }
+      .settings-panel.is-open {
+        display: block;
+      }
+      .settings-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 8px;
+      }
+      .settings-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: 2px solid rgba(26, 20, 35, 0.72);
+        border-radius: var(--radius-lg);
+        padding: 8px 10px;
+      }
+      .quick-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .empty-state {
+        border: 2px dashed rgba(26, 20, 35, 0.42);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        color: rgba(26, 20, 35, 0.68);
+        text-align: center;
+      }
+      @media (max-width: 900px) {
+        .worktop { flex-direction: column; }
+        .worktop-actions { justify-content: flex-start; width: 100%; }
+        .task-type-select { width: 100%; }
+      }
+    </style>
+  </head>
+  <body class="bg-light">
+    <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+    <nav class="navbar navbar-dark bg-dark admin-top-nav">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/admin/workflow">Mirr矩阵</a>
+        <div class="navbar-nav me-auto">
+          <a class="nav-link" data-nav="workflow" href="/admin/workflow">工作台</a>
+          <a class="nav-link" data-nav="system" href="/admin/system">系统配置</a>
+          <a class="nav-link" data-nav="projects" href="/admin/projects">项目管理</a>
+          <a class="nav-link" data-nav="task_types" href="/admin/task-types">任务类型管理</a>
+          <a class="nav-link" data-nav="tasks" href="/admin/tasks">任务列表</a>
+          <a class="nav-link" data-nav="test" href="/admin/test">测试</a>
+          <a class="nav-link" data-nav="agent" href="/admin/agent">智能体</a>
+          <a class="nav-link" data-nav="paypal" href="/admin/paypal">PayPal管理</a>
+          <a class="nav-link" data-nav="image_resources" href="/admin/image-resources">图片资源</a>
+          <a class="nav-link" data-nav="card_keys" href="/admin/card-keys">卡密管理</a>
+          <a class="nav-link" data-nav="logs" href="/admin/logs">请求日志</a>
+          <a class="nav-link" data-nav="users" href="/admin/users">用户管理</a>
+        </div>
+        <button class="btn btn-outline-light btn-sm" id="btnLogout">退出</button>
+      </div>
+    </nav>
+
+    <main class="workflow-page">
+      <div class="worktop">
+        <div class="worktop-title">
+          <h1>工作台</h1>
+          <div class="worktop-subtitle">按平台查看账号池：账号是否可用、额度还剩多少、是否正在生成、代理和指纹浏览器窗口分别是什么。</div>
+        </div>
+        <div class="worktop-actions">
+          <select id="taskTypeSelect" class="form-select form-select-sm task-type-select" aria-label="任务类型"></select>
+          <button class="btn btn-outline-secondary btn-sm" id="btnRefresh" type="button">
+            <i class="bi bi-arrow-clockwise"></i>
+            刷新
+          </button>
+          <button class="btn btn-outline-primary btn-sm" id="btnToggleSettings" type="button">
+            <i class="bi bi-sliders"></i>
+            页面设置
+          </button>
+        </div>
+      </div>
+
+      <section class="settings-panel module-shell" id="settingsPanel" aria-label="页面设置">
+        <div class="module-head">
+          <h2 class="module-title">页面设置</h2>
+          <button class="btn btn-sm btn-outline-secondary" id="btnResetLayout" type="button">恢复默认</button>
+        </div>
+        <div class="module-body">
+          <div class="settings-list" id="settingsList"></div>
+        </div>
+      </section>
+
+      <div class="module-grid" id="moduleHost"></div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+      import { adminFetch, toast, setActiveNav, logout, escapeHtml, initAdminPage } from "/assets/app.js";
+
+      initAdminPage("workflow");
+      setActiveNav("workflow");
+      document.getElementById("btnLogout").addEventListener("click", logout);
+
+      const LS_PREFIX = "fpbrowser2api.admin.workflow.";
+      const LS_KEYS = {
+        taskTypeId: `${LS_PREFIX}task_type_id`,
+        layoutVersion: `${LS_PREFIX}layout_version`,
+        modules: `${LS_PREFIX}modules`,
+      };
+      const LAYOUT_VERSION = "2";
+      const DEFAULT_MODULES = [
+        { id: "overview", label: "账号池总览", visible: true },
+        { id: "pool", label: "号池", visible: true },
+        { id: "quick", label: "快捷操作", visible: true },
+        { id: "workflow", label: "诊断信息", visible: false },
+        { id: "browser", label: "浏览器配置", visible: false },
+      ];
+
+      const state = {
+        loading: true,
+        taskTypes: [],
+        selectedTypeId: 0,
+        mappings: [],
+        tree: [],
+        queue: null,
+        error: "",
+      };
+
+      function lsGet(key) {
+        try { return localStorage.getItem(key); } catch { return null; }
+      }
+
+      function lsSet(key, value) {
+        try { localStorage.setItem(key, value); } catch {}
+      }
+
+      function lsDel(key) {
+        try { localStorage.removeItem(key); } catch {}
+      }
+
+      function loadModulePrefs() {
+        const raw = lsGet(LS_KEYS.modules);
+        if (!raw || lsGet(LS_KEYS.layoutVersion) !== LAYOUT_VERSION) return DEFAULT_MODULES.map((m) => ({ ...m }));
+        try {
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) throw new Error("bad module prefs");
+          const known = new Map(DEFAULT_MODULES.map((m) => [m.id, m]));
+          const merged = [];
+          parsed.forEach((item) => {
+            const base = known.get(item?.id);
+            if (base) {
+              merged.push({ ...base, visible: item.visible !== false });
+              known.delete(base.id);
+            }
+          });
+          known.forEach((base) => merged.push({ ...base }));
+          return merged;
+        } catch (_e) {
+          return DEFAULT_MODULES.map((m) => ({ ...m }));
+        }
+      }
+
+      function saveModulePrefs(modules) {
+        lsSet(LS_KEYS.layoutVersion, LAYOUT_VERSION);
+        lsSet(LS_KEYS.modules, JSON.stringify(modules.map(({ id, visible }) => ({ id, visible }))));
+      }
+
+      async function fetchJson(url, options = {}) {
+        const r = await adminFetch(url, options);
+        if (!r) return null;
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || d?.success === false) {
+          throw new Error(d?.detail || d?.message || `请求失败：${url}`);
+        }
+        return d;
+      }
+
+      function selectedTaskType() {
+        return state.taskTypes.find((t) => Number(t.id) === Number(state.selectedTypeId)) || null;
+      }
+
+      function flattenTree() {
+        const projects = Array.isArray(state.tree) ? state.tree : [];
+        const browsers = [];
+        const spaces = [];
+        const windows = [];
+        projects.forEach((project) => {
+          (project.browsers || []).forEach((browser) => {
+            browsers.push({ ...browser, project_name: project.name });
+            (browser.spaces || []).forEach((space) => {
+              spaces.push({ ...space, browser_name: browser.name, browser_vendor: browser.vendor, project_name: project.name });
+              (space.windows || []).forEach((windowItem) => {
+                windows.push({
+                  ...windowItem,
+                  project_name: project.name,
+                  browser_name: browser.name,
+                  browser_vendor: browser.vendor,
+                  browser_lan_addr: browser.lan_addr,
+                  space_name: space.name,
+                });
+              });
+            });
+          });
+        });
+        return { projects, browsers, spaces, windows };
+      }
+
+      function parseDate(value) {
+        const raw = String(value || "").trim();
+        if (!raw) return null;
+        const date = new Date(raw.replace(" ", "T"));
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+
+      function isFuture(value) {
+        const date = parseDate(value);
+        return !!date && date.getTime() > Date.now();
+      }
+
+      function fmtNumber(value) {
+        if (value === null || value === undefined || value === "") return "-";
+        const n = Number(value);
+        if (!Number.isFinite(n)) return escapeHtml(value);
+        return n.toLocaleString("zh-CN");
+      }
+
+      function shortText(value, fallback = "-") {
+        const text = String(value ?? "").trim();
+        return text ? escapeHtml(text) : fallback;
+      }
+
+      function rawText(value, fallback = "") {
+        const text = String(value ?? "").trim();
+        return text || fallback;
+      }
+
+      function accountName(item) {
+        return rawText(
+          item.platform_username || item.platform_account || item.platform_account_url || item.window_name || item.window_key,
+          "未命名账号",
+        );
+      }
+
+      function accountMeta(item) {
+        if (item.platform_username || item.platform_account || item.platform_account_url) return "即梦账号已读取";
+        return "未读取账号名，先显示窗口名";
+      }
+
+      function compactId(value) {
+        const text = rawText(value);
+        if (!text) return "";
+        return text.length > 14 ? `${text.slice(0, 6)}...${text.slice(-4)}` : text;
+      }
+
+      function classifyMapping(item) {
+        const type = selectedTaskType();
+        const threshold = Number(type?.continuous_error_threshold || 3);
+        const errors = Number(item.consecutive_errors || 0);
+        const quota = Number(item.remaining_quota ?? item.sora_remaining_count ?? 0);
+        const inflight = Number(item.inflight_slots || 0);
+        if (Number(item.deleted || 0) || !Number(item.enabled || 0) || !Number(item.window_enabled ?? 1)) {
+          return { text: "停用", cls: "health-muted", level: "muted" };
+        }
+        if (isFuture(item.error_cooldown_until)) {
+          return { text: "冷却", cls: "health-warn", level: "warn" };
+        }
+        if (errors >= threshold) {
+          return { text: "异常", cls: "health-bad", level: "bad" };
+        }
+        if (quota <= 0) {
+          return { text: "无额度", cls: "health-warn", level: "warn" };
+        }
+        if (inflight > 0) {
+          return { text: "运行中", cls: "health-info", level: "info" };
+        }
+        return { text: "健康", cls: "health-ok", level: "ok" };
+      }
+
+      function poolMetrics() {
+        const mappings = state.mappings || [];
+        const classified = mappings.map((item) => classifyMapping(item));
+        const proxyCountries = new Map();
+        mappings.forEach((item) => {
+          const country = rawText(item.proxy_country, "未设置");
+          proxyCountries.set(country, (proxyCountries.get(country) || 0) + 1);
+        });
+        const proxySummary = Array.from(proxyCountries.entries())
+          .map(([country, count]) => `${country} ${count}`)
+          .join(" / ") || "-";
+        return {
+          total: mappings.length,
+          enabled: mappings.filter((item) => Number(item.enabled || 0) && !Number(item.deleted || 0)).length,
+          healthy: classified.filter((x) => x.level === "ok").length,
+          busy: mappings.reduce((sum, item) => sum + Number(item.inflight_slots || 0), 0),
+          abnormal: classified.filter((x) => x.level === "bad" || x.level === "warn").length,
+          quota: mappings.reduce((sum, item) => sum + Math.max(0, Number(item.remaining_quota ?? item.sora_remaining_count ?? 0) || 0), 0),
+          proxySummary,
+        };
+      }
+
+      function statusDot(level) {
+        const cls = level === "ok" ? "status-ok" : level === "bad" ? "status-bad" : level === "warn" ? "status-warn" : "status-muted";
+        return `<span class="status-dot ${cls}" aria-hidden="true"></span>`;
+      }
+
+      function renderOverview() {
+        const metrics = poolMetrics();
+        const type = selectedTaskType();
+        return `
+          <section class="module-shell" data-module-id="overview">
+            <div class="module-head">
+              <h2 class="module-title">账号池总览</h2>
+              <span class="text-muted small">${shortText(type?.code, "未选择任务类型")}</span>
+            </div>
+            <div class="module-body">
+              <div class="stat-grid">
+                <div class="stat-cell">
+                  <div class="stat-label">当前平台</div>
+                  <div class="stat-value stat-text">${shortText(type?.name, "未选择")}</div>
+                  <div class="stat-meta">${shortText(type?.code, "-")}</div>
+                </div>
+                <div class="stat-cell">
+                  <div class="stat-label">账号总数</div>
+                  <div class="stat-value">${fmtNumber(metrics.total)}</div>
+                  <div class="stat-meta">已启用 ${fmtNumber(metrics.enabled)}</div>
+                </div>
+                <div class="stat-cell">
+                  <div class="stat-label">可用账号</div>
+                  <div class="stat-value">${fmtNumber(metrics.healthy)}</div>
+                  <div class="stat-meta">健康且有额度</div>
+                </div>
+                <div class="stat-cell">
+                  <div class="stat-label">正在生成</div>
+                  <div class="stat-value">${fmtNumber(metrics.busy)}</div>
+                  <div class="stat-meta">当前占用槽位</div>
+                </div>
+                <div class="stat-cell">
+                  <div class="stat-label">总剩余额度</div>
+                  <div class="stat-value">${fmtNumber(metrics.quota)}</div>
+                  <div class="stat-meta">当前平台汇总</div>
+                </div>
+                <div class="stat-cell">
+                  <div class="stat-label">异常账号</div>
+                  <div class="stat-value">${fmtNumber(metrics.abnormal)}</div>
+                  <div class="stat-meta">异常、冷却或无额度</div>
+                </div>
+                <div class="stat-cell">
+                  <div class="stat-label">代理地区</div>
+                  <div class="stat-value stat-text">${escapeHtml(metrics.proxySummary)}</div>
+                  <div class="stat-meta">按当前账号池统计</div>
+                </div>
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderWorkflow() {
+        const flat = flattenTree();
+        const metrics = poolMetrics();
+        const queue = state.queue?.queue || {};
+        const hasRoxy = flat.browsers.some((b) => String(b.vendor || "").toLowerCase() === "roxy");
+        const quotaReady = state.mappings.some((item) => item.remaining_quota !== null && item.remaining_quota !== undefined);
+        const steps = [
+          { name: "接口服务", level: state.queue ? "ok" : "warn", detail: state.queue ? `排队中 ${fmtNumber(queue.queue_size ?? 0)}，任务统计可读。` : "任务队列数据未读取。" },
+          { name: "指纹浏览器配置", level: flat.browsers.length ? "ok" : "warn", detail: flat.browsers.length ? `共 ${flat.browsers.length} 个配置，${hasRoxy ? "包含 Roxy" : "未识别 Roxy"}。` : "未读取到浏览器配置。" },
+          { name: "窗口同步", level: flat.windows.length ? "ok" : "warn", detail: flat.windows.length ? `全项目同步窗口 ${flat.windows.length} 个。` : "未同步到窗口。" },
+          { name: "当前平台", level: selectedTaskType() ? "ok" : "warn", detail: selectedTaskType() ? `${selectedTaskType().name} / ${selectedTaskType().code}` : "未选择任务类型。" },
+          { name: "账号绑定", level: metrics.total ? "ok" : "warn", detail: metrics.total ? `${metrics.total} 个账号入口，${metrics.healthy} 个可用。` : "当前平台还没有账号入口。" },
+          { name: "额度读取", level: quotaReady ? "ok" : "warn", detail: quotaReady ? `当前总额度 ${fmtNumber(metrics.quota)}。` : "尚未读取到额度字段。" },
+        ];
+        return `
+          <section class="module-shell" data-module-id="workflow">
+            <div class="module-head">
+              <h2 class="module-title">诊断信息</h2>
+              <a class="btn btn-sm btn-outline-secondary" href="/admin/task-types">任务类型管理</a>
+            </div>
+            <div class="module-body">
+              <div class="flow-list">
+                ${steps.map((step) => `
+                  <div class="flow-step">
+                    <div class="flow-name">${statusDot(step.level)}<span>${escapeHtml(step.name)}</span></div>
+                    <div class="flow-detail">${escapeHtml(step.detail)}</div>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderPool() {
+        const rows = (state.mappings || []).map((item) => {
+          const health = classifyMapping(item);
+          const id = Number(item.id || 0);
+          const proxy = [item.proxy_country, item.proxy_addr].filter(Boolean).join(" / ");
+          const type = selectedTaskType();
+          const remark = rawText(item.window_remark, "待分类");
+          const hasAccountName = !!rawText(item.platform_username || item.platform_account || item.platform_account_url);
+          const canSyncDreaminaName = String(type?.code || "") === "dreamina_workflow" && !hasAccountName;
+          return `
+            <tr>
+              <td><span class="health-pill ${health.cls}">${escapeHtml(health.text)}</span></td>
+              <td class="wrap-cell col-account">
+                <div class="account-name">${shortText(accountName(item))}</div>
+                <div class="account-meta">${escapeHtml(accountMeta(item))}</div>
+              </td>
+              <td class="wrap-cell">${shortText(type?.name)}</td>
+              <td class="wrap-cell">${shortText(item.browser_name)}<div class="detail-line">${shortText(item.space_name)}</div></td>
+              <td class="wrap-cell">${shortText(item.window_name || item.window_key)}<div class="detail-line">窗口ID：${shortText(compactId(item.window_key))}</div></td>
+              <td class="wrap-cell">${shortText(proxy, "未绑定代理")}</td>
+              <td class="text-end fw-semibold">${fmtNumber(item.remaining_quota ?? item.sora_remaining_count)}</td>
+              <td class="text-end">${fmtNumber(item.inflight_slots || 0)}</td>
+              <td class="text-end">${fmtNumber(item.consecutive_errors || 0)}</td>
+              <td class="wrap-cell"><span class="tag-pill">${escapeHtml(remark)}</span></td>
+              <td>
+                <div class="pool-actions" role="group" aria-label="窗口操作">
+                  ${canSyncDreaminaName ? `<button class="btn btn-sm btn-outline-success" type="button" data-action="sync-account-name" data-id="${id}" title="从已登录即梦窗口读取账号名">账号名</button>` : ""}
+                  <button class="btn btn-outline-primary" type="button" data-action="open" data-id="${id}">打开</button>
+                  <button class="btn btn-outline-secondary" type="button" data-action="quota" data-id="${id}">额度</button>
+                  <button class="btn btn-outline-dark" type="button" data-action="close" data-id="${id}">关闭</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join("");
+        return `
+          <section class="module-shell" data-module-id="pool">
+            <div class="module-head">
+              <h2 class="module-title">号池</h2>
+              <span class="text-muted small">${fmtNumber((state.mappings || []).length)} 个账号入口</span>
+            </div>
+            <div class="module-body">
+              <div class="pool-toolbar">
+                <div class="text-muted small">当前平台：${shortText(selectedTaskType()?.name, "未选择")}。每一行对应一个可调度的指纹浏览器窗口。</div>
+                <a class="btn btn-sm btn-outline-primary" href="/admin/projects">项目管理</a>
+              </div>
+              ${(state.mappings || []).length ? `
+                <div class="pool-table-wrap">
+                  <table class="table table-sm table-hover pool-table">
+                    <thead class="table-dark">
+                      <tr>
+                        <th>状态</th>
+                        <th class="col-account">账号标识</th>
+                        <th>平台</th>
+                        <th>指纹浏览器 / 空间</th>
+                        <th>窗口名称</th>
+                        <th>代理</th>
+                        <th class="text-end">剩余额度</th>
+                        <th class="text-end">占用</th>
+                        <th class="text-end">错误</th>
+                        <th>分类 / 备注</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                  </table>
+                </div>
+              ` : `<div class="empty-state">当前任务类型还没有绑定窗口。</div>`}
+            </div>
+          </section>
+        `;
+      }
+
+      function renderBrowser() {
+        const flat = flattenTree();
+        const items = flat.browsers.map((browser) => {
+          const spaces = browser.spaces || [];
+          const windowCount = spaces.reduce((sum, space) => sum + (space.windows || []).length, 0);
+          return `
+            <div class="browser-item">
+              <div class="browser-item-title">${shortText(browser.name)}</div>
+              <div class="detail-line">项目：${shortText(browser.project_name)}</div>
+              <div class="detail-line">Vendor：${shortText(browser.vendor)}</div>
+              <div class="detail-line">地址：${shortText(browser.lan_addr)}</div>
+              <div class="detail-line">空间 ${fmtNumber(spaces.length)} / 窗口 ${fmtNumber(windowCount)}</div>
+            </div>
+          `;
+        }).join("");
+        return `
+          <section class="module-shell" data-module-id="browser">
+            <div class="module-head">
+              <h2 class="module-title">浏览器配置</h2>
+              <span class="text-muted small">诊断用，默认隐藏</span>
+            </div>
+            <div class="module-body">
+              ${flat.browsers.length ? `<div class="browser-grid">${items}</div>` : `<div class="empty-state">暂无浏览器配置。</div>`}
+            </div>
+          </section>
+        `;
+      }
+
+      function renderQuick() {
+        return `
+          <section class="module-shell" data-module-id="quick">
+            <div class="module-head">
+              <h2 class="module-title">快捷操作</h2>
+              <span class="text-muted small">常用入口</span>
+            </div>
+            <div class="module-body">
+              <div class="quick-links">
+                <a class="btn btn-sm btn-outline-primary" href="/admin/projects">项目管理</a>
+                <a class="btn btn-sm btn-outline-primary" href="/admin/task-types">任务类型管理</a>
+                <a class="btn btn-sm btn-outline-primary" href="/admin/tasks">任务列表</a>
+                <a class="btn btn-sm btn-outline-primary" href="/admin/test">测试</a>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-action="refresh-all-quota">刷新当前号池额度</button>
+                <a class="btn btn-sm btn-outline-secondary" href="/docs">API 文档</a>
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderModules() {
+        const modules = loadModulePrefs();
+        renderSettings(modules);
+        const renderers = {
+          overview: renderOverview,
+          workflow: renderWorkflow,
+          pool: renderPool,
+          browser: renderBrowser,
+          quick: renderQuick,
+        };
+        const html = modules
+          .filter((m) => m.visible)
+          .map((m) => renderers[m.id]?.() || "")
+          .join("");
+        document.getElementById("moduleHost").innerHTML = html || `<div class="empty-state">没有开启的模块。</div>`;
+      }
+
+      function renderSettings(modules) {
+        document.getElementById("settingsList").innerHTML = modules.map((module, index) => `
+          <div class="settings-item" data-module="${escapeHtml(module.id)}">
+            <input class="form-check-input module-visible" type="checkbox" ${module.visible ? "checked" : ""} aria-label="${escapeHtml(module.label)}" />
+            <span class="flex-grow-1 fw-semibold">${escapeHtml(module.label)}</span>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-move="-1" ${index === 0 ? "disabled" : ""}>上移</button>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-move="1" ${index === modules.length - 1 ? "disabled" : ""}>下移</button>
+          </div>
+        `).join("");
+      }
+
+      function renderTaskTypeSelect() {
+        const select = document.getElementById("taskTypeSelect");
+        select.innerHTML = state.taskTypes.map((item) => `
+          <option value="${Number(item.id)}" ${Number(item.id) === Number(state.selectedTypeId) ? "selected" : ""}>
+            ${escapeHtml(item.name)} (${escapeHtml(item.code)})
+          </option>
+        `).join("");
+        select.disabled = !state.taskTypes.length;
+      }
+
+      async function loadAll() {
+        state.loading = true;
+        state.error = "";
+        document.getElementById("moduleHost").innerHTML = `<div class="empty-state">正在读取当前状态...</div>`;
+        try {
+          const [typesData, queueData, treeData] = await Promise.all([
+            fetchJson("/api/admin/task-types"),
+            fetchJson("/api/admin/queue-info"),
+            fetchJson("/api/admin/tree"),
+          ]);
+          state.taskTypes = Array.isArray(typesData?.task_types) ? typesData.task_types : [];
+          state.queue = queueData || null;
+          state.tree = Array.isArray(treeData?.tree) ? treeData.tree : [];
+          const savedId = Number(lsGet(LS_KEYS.taskTypeId) || 0);
+          const dreamina = state.taskTypes.find((item) => String(item.code || "") === "dreamina_workflow");
+          const currentStillExists = state.taskTypes.some((item) => Number(item.id) === Number(state.selectedTypeId));
+          if (!currentStillExists) {
+            state.selectedTypeId = savedId || Number(dreamina?.id || state.taskTypes[0]?.id || 0);
+          }
+          renderTaskTypeSelect();
+          await loadMappings();
+        } catch (err) {
+          state.error = err?.message || String(err);
+          document.getElementById("moduleHost").innerHTML = `<div class="empty-state">${escapeHtml(state.error)}</div>`;
+        } finally {
+          state.loading = false;
+        }
+      }
+
+      async function loadMappings() {
+        if (!state.selectedTypeId) {
+          state.mappings = [];
+          renderModules();
+          return;
+        }
+        const data = await fetchJson(`/api/admin/task-types/${encodeURIComponent(String(state.selectedTypeId))}/windows`);
+        state.mappings = Array.isArray(data?.items) ? data.items : [];
+        lsSet(LS_KEYS.taskTypeId, String(state.selectedTypeId));
+        renderModules();
+      }
+
+      function mappingById(id) {
+        return (state.mappings || []).find((item) => Number(item.id) === Number(id));
+      }
+
+      async function runMappingAction(action, id) {
+        const item = mappingById(id);
+        if (!item) return;
+        if (action === "sync-account-name") {
+          try {
+            const data = await fetchJson(`/api/admin/task-type-windows/${id}/sync-dreamina-account`, {
+              method: "POST",
+              body: JSON.stringify({}),
+            });
+            toast(`已读取账号名：${data.account || "-"}`, "success");
+            await loadMappings();
+          } catch (err) {
+            toast(err?.message || "读取账号名失败", "error");
+          }
+          return;
+        }
+        const headless = Number(item.headless || 0) ? "true" : "false";
+        const pureMode = Number(item.pure_mode || 0) ? "true" : "false";
+        const endpoints = {
+          open: `/api/admin/task-type-windows/${id}/manual-open?headless=${headless}&pure_mode=${pureMode}`,
+          quota: `/api/admin/task-type-windows/${id}/refresh-remaining-quota?headless=${headless}`,
+          close: `/api/admin/task-type-windows/${id}/manual-close`,
+        };
+        const label = action === "open" ? "打开窗口" : action === "quota" ? "刷新额度" : "关闭窗口";
+        try {
+          await fetchJson(endpoints[action], { method: "POST", body: JSON.stringify({}) });
+          toast(`${label}完成`, "success");
+          await loadMappings();
+        } catch (err) {
+          toast(err?.message || `${label}失败`, "error");
+        }
+      }
+
+      document.getElementById("taskTypeSelect").addEventListener("change", async (event) => {
+        state.selectedTypeId = Number(event.target.value || 0);
+        lsSet(LS_KEYS.taskTypeId, String(state.selectedTypeId));
+        await loadMappings();
+      });
+
+      document.getElementById("btnRefresh").addEventListener("click", loadAll);
+      document.getElementById("btnToggleSettings").addEventListener("click", () => {
+        document.getElementById("settingsPanel").classList.toggle("is-open");
+      });
+      document.getElementById("btnResetLayout").addEventListener("click", () => {
+        lsDel(LS_KEYS.modules);
+        lsSet(LS_KEYS.layoutVersion, LAYOUT_VERSION);
+        renderModules();
+      });
+
+      document.getElementById("settingsList").addEventListener("change", (event) => {
+        if (!event.target.classList.contains("module-visible")) return;
+        const id = event.target.closest("[data-module]")?.getAttribute("data-module");
+        const modules = loadModulePrefs().map((module) => (
+          module.id === id ? { ...module, visible: !!event.target.checked } : module
+        ));
+        saveModulePrefs(modules);
+        renderModules();
+      });
+
+      document.getElementById("settingsList").addEventListener("click", (event) => {
+        const btn = event.target.closest("[data-move]");
+        if (!btn) return;
+        const id = btn.closest("[data-module]")?.getAttribute("data-module");
+        const move = Number(btn.getAttribute("data-move") || 0);
+        const modules = loadModulePrefs();
+        const index = modules.findIndex((module) => module.id === id);
+        const nextIndex = index + move;
+        if (index < 0 || nextIndex < 0 || nextIndex >= modules.length) return;
+        const [item] = modules.splice(index, 1);
+        modules.splice(nextIndex, 0, item);
+        saveModulePrefs(modules);
+        renderModules();
+      });
+
+      document.getElementById("moduleHost").addEventListener("click", async (event) => {
+        const bulkBtn = event.target.closest("[data-action='refresh-all-quota']");
+        if (bulkBtn) {
+          const ids = (state.mappings || []).map((item) => Number(item.id || 0)).filter(Boolean);
+          if (!ids.length) {
+            toast("当前号池没有可刷新的账号", "warn");
+            return;
+          }
+          bulkBtn.disabled = true;
+          try {
+            for (const id of ids) {
+              await runMappingAction("quota", id);
+            }
+            toast("当前号池额度已刷新", "success");
+          } finally {
+            bulkBtn.disabled = false;
+          }
+          return;
+        }
+        const btn = event.target.closest("[data-action][data-id]");
+        if (!btn) return;
+        await runMappingAction(btn.getAttribute("data-action"), Number(btn.getAttribute("data-id")));
+      });
+
+      loadAll();
+    </script>
+  </body>
+</html>
