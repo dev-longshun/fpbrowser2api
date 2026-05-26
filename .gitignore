@@ -27,6 +27,7 @@ MANIFEST
 
 # 环境相关
 venv/
+.venv/
 env/
 .env
 
@@ -44,3 +45,7 @@ env/
 /data/*.db
 /data/*.db-shm
 /data/*.db-wal
+server.log
+
+# macOS
+.DS_Store
