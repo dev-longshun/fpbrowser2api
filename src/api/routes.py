@@ -30,6 +30,26 @@ from ..services.task_handler_registry import CreateTaskContext, get_create_task_
 
 _DB_PATH = str(Path(__file__).resolve().parent.parent.parent / "data" / "fpbrowser.db")
 
+_api_keys_table_ensured = False
+
+
+async def _ensure_api_keys_table(conn):
+    global _api_keys_table_ensured
+    if _api_keys_table_ensured:
+        return
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS api_keys (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL DEFAULT '',
+            key_value TEXT NOT NULL UNIQUE,
+            enabled BOOLEAN NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT (datetime('now','localtime')),
+            last_used_at TIMESTAMP DEFAULT NULL
+        )
+    """)
+    await conn.commit()
+    _api_keys_table_ensured = True
+
 
 async def verify_api_key_multi(request: Request) -> str:
     """Multi-key auth: check api_keys table first, fallback to system_config.api_key."""
@@ -41,6 +61,7 @@ async def verify_api_key_multi(request: Request) -> str:
         raise HTTPException(status_code=401, detail="Empty API key")
 
     async with aiosqlite.connect(_DB_PATH) as conn:
+        await _ensure_api_keys_table(conn)
         cursor = await conn.execute(
             "SELECT id, enabled FROM api_keys WHERE key_value = ?", (token,)
         )
