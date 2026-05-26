@@ -11,7 +11,7 @@ import importlib.util
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from fastapi import Depends, HTTPException
+from fastapi import Body, Depends, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, Response
 
 from .core.database import Database
