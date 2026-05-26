@@ -30,6 +30,7 @@ static/assets/veo_image_cache/
 
 # 环境相关
 venv/
+.venv/
 env/
 .env
 __pycache__/
@@ -50,3 +51,7 @@ __pycache__/
 /data/*.db
 /data/*.db-shm
 /data/*.db-wal
+server.log
+
+# macOS
+.DS_Store
