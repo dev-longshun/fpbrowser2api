@@ -126,7 +126,7 @@
         <div class="col-12 col-lg-6 animate-fade-in-up animate-delay-1">
           <div class="card mb-4">
             <div class="card-body">
-              <h5 class="card-title">API Key</h5>
+              <h5 class="card-title">API Key（主密钥）</h5>
               <div class="mb-3">
                 <label class="form-label">当前 API Key</label>
                 <input class="form-control mono" id="currentApiKey" readonly />
@@ -136,6 +136,38 @@
                 <input class="form-control mono" id="newApiKey" placeholder="至少 6 个字符" />
               </div>
               <button class="btn btn-outline-primary" id="btnSaveApiKey">更新 API Key</button>
+            </div>
+          </div>
+
+          <!-- Multi API Keys -->
+          <div class="card mb-4">
+            <div class="card-body">
+              <h5 class="card-title">API Keys 分发管理</h5>
+              <div class="mb-3 p-3 rounded" style="background:var(--bs-light, #f8f9fa);">
+                <label class="form-label small text-muted mb-1">Base URL（复制给客户）</label>
+                <div class="input-group">
+                  <input class="form-control mono" id="baseUrlDisplay" readonly />
+                  <button class="btn btn-outline-secondary" id="btnCopyBaseUrl" title="复制">复制</button>
+                </div>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="text-muted small" id="keyCount"></span>
+                <button class="btn btn-sm btn-primary" id="btnCreateKey">+ 新建 Key</button>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>名称</th>
+                      <th>Key</th>
+                      <th>状态</th>
+                      <th>创建时间</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="apiKeysBody"></tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -303,7 +335,77 @@
         }
       });
 
+      // ─── Multi API Keys ───────────────────────────────────────────
+      const baseUrl = `${window.location.protocol}//${window.location.host}`;
+      document.getElementById("baseUrlDisplay").value = baseUrl;
+
+      document.getElementById("btnCopyBaseUrl").addEventListener("click", () => {
+        navigator.clipboard.writeText(baseUrl).then(() => toast("Base URL 已复制", "success"));
+      });
+
+      async function loadApiKeys() {
+        const r = await adminFetch("/api/admin/api-keys");
+        if (!r) return;
+        const d = await r.json();
+        const keys = d.keys || [];
+        document.getElementById("keyCount").textContent = `共 ${keys.length} 个 Key`;
+        const body = document.getElementById("apiKeysBody");
+        if (!keys.length) {
+          body.innerHTML = `<tr><td colspan="5" class="text-muted small">暂无分发 Key，点击右上角新建</td></tr>`;
+          return;
+        }
+        body.innerHTML = keys.map(k => `
+          <tr>
+            <td>${k.name || '<span class="text-muted">-</span>'}</td>
+            <td>
+              <code class="small" style="cursor:pointer" title="点击复制完整 Key" onclick="navigator.clipboard.writeText('${k.key_value}').then(()=>document.dispatchEvent(new CustomEvent('toast',{detail:'Key 已复制'})))">${k.key_preview}</code>
+            </td>
+            <td>${k.enabled ? '<span class="badge text-bg-success">启用</span>' : '<span class="badge text-bg-secondary">禁用</span>'}</td>
+            <td class="small text-muted">${(k.created_at || '').slice(0, 16)}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-${k.enabled ? 'warning' : 'success'} me-1" onclick="toggleKey(${k.id}, ${!k.enabled})">${k.enabled ? '禁用' : '启用'}</button>
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteKey(${k.id}, '${k.name || k.key_preview}')">删除</button>
+            </td>
+          </tr>
+        `).join("");
+      }
+
+      document.addEventListener("toast", e => toast(e.detail, "success"));
+
+      window.toggleKey = async function(id, enabled) {
+        const r = await adminFetch(`/api/admin/api-keys/${id}`, { method: "PATCH", body: JSON.stringify({ enabled }) });
+        if (!r) return;
+        if (!r.ok) { const d = await r.json(); toast(d.detail || "操作失败", "error"); return; }
+        toast(enabled ? "已启用" : "已禁用", "success");
+        await loadApiKeys();
+      };
+
+      window.deleteKey = async function(id, name) {
+        if (!confirm(`确定删除 Key「${name}」？删除后使用该 Key 的客户将无法访问。`)) return;
+        const r = await adminFetch(`/api/admin/api-keys/${id}`, { method: "DELETE" });
+        if (!r) return;
+        if (!r.ok) { const d = await r.json(); toast(d.detail || "删除失败", "error"); return; }
+        toast("已删除", "success");
+        await loadApiKeys();
+      };
+
+      document.getElementById("btnCreateKey").addEventListener("click", async () => {
+        const name = prompt("Key 名称（如：客户A、测试）：");
+        if (name === null) return;
+        const customKey = prompt("自定义 Key 值（留空则自动生成）：");
+        const body = { name: name.trim() };
+        if (customKey && customKey.trim()) body.key_value = customKey.trim();
+        const r = await adminFetch("/api/admin/api-keys", { method: "POST", body: JSON.stringify(body) });
+        if (!r) return;
+        const d = await r.json();
+        if (!r.ok) { toast(d.detail || "创建失败", "error"); return; }
+        toast(`Key 已创建: ${d.key_value}`, "success");
+        navigator.clipboard.writeText(d.key_value);
+        await loadApiKeys();
+      });
+
       load();
+      loadApiKeys();
     </script>
   </body>
 </html>

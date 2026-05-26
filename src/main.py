@@ -163,3 +163,109 @@ async def sync_dreamina_account_name(
         "message": "即梦账号名已读取",
         **account,
     }
+
+
+# ─── Multi API Key Management ────────────────────────────────────────────────
+
+import secrets
+import aiosqlite
+
+_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+_DB_PATH = str(_DATA_DIR / "fpbrowser.db")
+
+_API_KEYS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS api_keys (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL DEFAULT '',
+    key_value TEXT NOT NULL UNIQUE,
+    enabled BOOLEAN NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT (datetime('now','localtime')),
+    last_used_at TIMESTAMP DEFAULT NULL
+);
+"""
+
+
+@app.on_event("startup")
+async def _ensure_api_keys_table():
+    async with aiosqlite.connect(_DB_PATH) as conn:
+        await conn.execute(_API_KEYS_TABLE_SQL)
+        await conn.commit()
+
+
+@app.get("/api/admin/api-keys")
+async def list_api_keys(token: str = Depends(verify_admin_token)):
+    del token
+    async with aiosqlite.connect(_DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        cursor = await conn.execute(
+            "SELECT id, name, key_value, enabled, created_at, last_used_at FROM api_keys ORDER BY id"
+        )
+        rows = await cursor.fetchall()
+    keys = []
+    for r in rows:
+        kv = r["key_value"]
+        preview = kv[:6] + "..." + kv[-4:] if len(kv) > 12 else kv
+        keys.append({
+            "id": r["id"],
+            "name": r["name"],
+            "key_value": kv,
+            "key_preview": preview,
+            "enabled": bool(r["enabled"]),
+            "created_at": r["created_at"],
+            "last_used_at": r["last_used_at"],
+        })
+    return {"keys": keys}
+
+
+@app.post("/api/admin/api-keys")
+async def create_api_key(body: Dict[str, Any] = Body(...), token: str = Depends(verify_admin_token)):
+    del token
+    name = str(body.get("name") or "").strip()
+    key_value = str(body.get("key_value") or "").strip()
+    if not key_value:
+        key_value = "sk-" + secrets.token_urlsafe(32)
+    if len(key_value) < 6:
+        raise HTTPException(status_code=400, detail="API Key 至少 6 个字符")
+    async with aiosqlite.connect(_DB_PATH) as conn:
+        try:
+            await conn.execute(
+                "INSERT INTO api_keys (name, key_value) VALUES (?, ?)",
+                (name, key_value),
+            )
+            await conn.commit()
+        except aiosqlite.IntegrityError:
+            raise HTTPException(status_code=409, detail="该 API Key 已存在")
+    return {"success": True, "key_value": key_value, "name": name}
+
+
+@app.patch("/api/admin/api-keys/{key_id}")
+async def update_api_key(key_id: int, body: Dict[str, Any] = Body(...), token: str = Depends(verify_admin_token)):
+    del token
+    sets = []
+    params = []
+    if "name" in body:
+        sets.append("name = ?")
+        params.append(str(body["name"]))
+    if "enabled" in body:
+        sets.append("enabled = ?")
+        params.append(1 if body["enabled"] else 0)
+    if not sets:
+        raise HTTPException(status_code=400, detail="没有可更新的字段")
+    params.append(key_id)
+    async with aiosqlite.connect(_DB_PATH) as conn:
+        r = await conn.execute(f"UPDATE api_keys SET {', '.join(sets)} WHERE id = ?", params)
+        await conn.commit()
+        if r.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Key 不存在")
+    return {"success": True}
+
+
+@app.delete("/api/admin/api-keys/{key_id}")
+async def delete_api_key(key_id: int, token: str = Depends(verify_admin_token)):
+    del token
+    async with aiosqlite.connect(_DB_PATH) as conn:
+        r = await conn.execute("DELETE FROM api_keys WHERE id = ?", (key_id,))
+        await conn.commit()
+        if r.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Key 不存在")
+    return {"success": True}

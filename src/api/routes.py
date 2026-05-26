@@ -7,9 +7,11 @@ import json
 import os
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Body
+import aiosqlite
+from fastapi import APIRouter, Depends, HTTPException, Body, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -25,6 +27,40 @@ from ..core.public_api_limits import (
 )
 from ..services.task_service import TaskService
 from ..services.task_handler_registry import CreateTaskContext, get_create_task_handler
+
+_DB_PATH = str(Path(__file__).resolve().parent.parent.parent / "data" / "fpbrowser.db")
+
+
+async def verify_api_key_multi(request: Request) -> str:
+    """Multi-key auth: check api_keys table first, fallback to system_config.api_key."""
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    token = auth[7:].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Empty API key")
+
+    async with aiosqlite.connect(_DB_PATH) as conn:
+        cursor = await conn.execute(
+            "SELECT id, enabled FROM api_keys WHERE key_value = ?", (token,)
+        )
+        row = await cursor.fetchone()
+        if row:
+            if not row[1]:
+                raise HTTPException(status_code=403, detail="API key is disabled")
+            await conn.execute(
+                "UPDATE api_keys SET last_used_at = datetime('now','localtime') WHERE id = ?",
+                (row[0],),
+            )
+            await conn.commit()
+            return token
+
+        cursor = await conn.execute("SELECT api_key FROM system_config LIMIT 1")
+        sys_row = await cursor.fetchone()
+        if sys_row and sys_row[0] == token:
+            return token
+
+    raise HTTPException(status_code=401, detail="Invalid API key")
 
 
 router = APIRouter()
@@ -514,14 +550,14 @@ async def _get_task_status_response(task_id: str) -> JSONResponse:
 
 
 @router.get("/v1/task-types")
-async def list_task_types(api_key: str = Depends(verify_api_key_header)):
+async def list_task_types(api_key: str = Depends(verify_api_key_multi)):
     if not db:
         raise HTTPException(status_code=500, detail="db not initialized")
     items = await db.list_task_types()
     return {"success": True, "task_types": [t.model_dump() for t in items]}
 
 @router.get("/v1/task-types-public")
-async def list_task_types(api_key: str = Depends(verify_api_key_header)):
+async def list_task_types(api_key: str = Depends(verify_api_key_multi)):
     if not db:
         raise HTTPException(status_code=500, detail="db not initialized")
     items = await db.list_task_types_public()
@@ -530,14 +566,14 @@ async def list_task_types(api_key: str = Depends(verify_api_key_header)):
 
 @router.post("/v1/tasks")
 async def create_task(
-    api_key: str = Depends(verify_api_key_header),
+    api_key: str = Depends(verify_api_key_multi),
     body: CreateTaskRequest = Body(...),
 ):
     return await _create_task_from_request(body)
 
 
 @router.get("/v1/models")
-async def list_openai_compatible_models(api_key: str = Depends(verify_api_key_header)):
+async def list_openai_compatible_models(api_key: str = Depends(verify_api_key_multi)):
     """OpenAI-compatible model list, mainly for NewAPI channel discovery/test."""
 
     now = int(time.time())
@@ -556,7 +592,7 @@ async def list_openai_compatible_models(api_key: str = Depends(verify_api_key_he
 
 
 @router.get("/v1/models/{model_id}")
-async def get_openai_compatible_model(model_id: str, api_key: str = Depends(verify_api_key_header)):
+async def get_openai_compatible_model(model_id: str, api_key: str = Depends(verify_api_key_multi)):
     """OpenAI-compatible single model lookup."""
 
     model = (model_id or "").strip()
@@ -572,7 +608,7 @@ async def get_openai_compatible_model(model_id: str, api_key: str = Depends(veri
 
 @router.post("/v1/chat/completions")
 async def create_chat_completion_for_newapi_test(
-    api_key: str = Depends(verify_api_key_header),
+    api_key: str = Depends(verify_api_key_multi),
     body: Dict[str, Any] = Body(...),
 ):
     """Minimal OpenAI chat-compatible endpoint for NewAPI channel tests.
@@ -597,7 +633,7 @@ async def create_chat_completion_for_newapi_test(
 
 @router.post("/v1/videos")
 async def create_video(
-    api_key: str = Depends(verify_api_key_header),
+    api_key: str = Depends(verify_api_key_multi),
     body: CreateVideoRequest = Body(...),
 ):
     task_type_code, payload = _normalize_video_task_payload(body.model_dump(exclude_none=True))
@@ -614,10 +650,10 @@ async def create_video(
 
 
 @router.get("/v1/tasks/{task_id}")
-async def get_task_status(task_id: str, api_key: str = Depends(verify_api_key_header)):
+async def get_task_status(task_id: str, api_key: str = Depends(verify_api_key_multi)):
     return await _get_task_status_response(task_id)
 
 
 @router.get("/v1/videos/{task_id}")
-async def get_video_status(task_id: str, api_key: str = Depends(verify_api_key_header)):
+async def get_video_status(task_id: str, api_key: str = Depends(verify_api_key_multi)):
     return await _get_newapi_video_status_response(task_id)
