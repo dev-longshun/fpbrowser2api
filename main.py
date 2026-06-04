@@ -2,6 +2,7 @@
 from __future__ import annotations
 import importlib.util
 import pathlib
+import sqlite3
 import sys
 import threading
 
@@ -66,6 +67,38 @@ def _patch_dreamina_region():
             print(f"  {p}")
 
 
+def _clear_dreamina_cooldown():
+    """Prevent dreamina subscription end_time from blocking the scheduler.
+
+    dreamina_fetch_credits_in_window writes the VIP subscription expiry
+    (~10 days out) into cooldown_until, which causes the scheduler to skip
+    the window. This timer periodically NULLs out any cooldown_until set
+    more than 10 minutes in the future for dreamina_workflow windows.
+    """
+    try:
+        db_path = pathlib.Path(__file__).parent / "data" / "fpbrowser.db"
+        if db_path.exists():
+            conn = sqlite3.connect(str(db_path), timeout=5)
+            cursor = conn.execute(
+                """
+                UPDATE task_type_windows
+                SET cooldown_until = NULL, updated_at = datetime('now','localtime')
+                WHERE cooldown_until IS NOT NULL
+                  AND cooldown_until > datetime('now', 'localtime', '+10 minutes')
+                  AND task_type_id IN (
+                      SELECT id FROM task_types WHERE code = 'dreamina_workflow'
+                  )
+                """
+            )
+            if cursor.rowcount > 0:
+                print(f"[cooldown-patch] Cleared cooldown_until for {cursor.rowcount} dreamina window(s)")
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        print(f"[cooldown-patch] Error: {e}")
+    threading.Timer(60.0, _clear_dreamina_cooldown).start()
+
+
 def _run_pyc() -> None:
     if sys.implementation.name != "cpython" or sys.version_info[:2] != REQUIRED:
         raise SystemExit(
@@ -79,6 +112,7 @@ def _run_pyc() -> None:
     module = importlib.util.module_from_spec(spec)
     sys.modules["__main__"] = module
     threading.Timer(2.0, _patch_dreamina_region).start()
+    threading.Timer(5.0, _clear_dreamina_cooldown).start()
     spec.loader.exec_module(module)
 
 
