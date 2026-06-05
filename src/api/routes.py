@@ -205,6 +205,10 @@ def _normalize_video_task_payload(payload: Dict[str, Any]) -> tuple[str, Dict[st
             payload["operation"] = "edit"
     else:
         raise HTTPException(status_code=400, detail=f"model name is required!!")
+
+    if "image" in payload and "image_url" not in payload:
+        payload["image_url"] = payload.pop("image")
+
     return task_type_code, payload
 
 
